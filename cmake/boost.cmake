@@ -16,9 +16,11 @@ else ()
   if (WIN32)
     set(BOOST_BOOTSTRAP ".\\bootstrap.bat")
     set(BOOST_B2 ".\\b2.exe")
+    set(BOOST_TOOLSET "msvc-12.0")
   elseif (APPLE)
     set(BOOST_BOOTSTRAP "./bootstrap.sh")
     set(BOOST_B2 "./b2")
+    set(BOOST_TOOLSET "clang")
   endif ()
 
   set(BOOST_BOOTSTRAP_RESULT)
@@ -39,7 +41,7 @@ else ()
       --builddir=${BOOST_BUILD_DIR}/build
       --with-system
       --with-thread
-      toolset=msvc-12.0
+      toolset=${BOOST_TOOLSET}
       architecture=x86
       address-model=64
       link=static
