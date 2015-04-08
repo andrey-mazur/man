@@ -4,11 +4,12 @@ message(STATUS "Building boost project")
 
 set(BOOST_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/boost")
 set(BOOST_BUILD_DIR "${CMAKE_BINARY_DIR}/boost")
+set(BOOST_COMPONENTS system thread date_time chrono atomic)
 
 set(BOOST_ROOT ${BOOST_BUILD_DIR})
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost
-  COMPONENTS system thread)
+  COMPONENTS ${BOOST_COMPONENTS})
 if (Boost_FOUND)
   #message(STATUS ${Boost_LIBRARIES})
 else ()
@@ -34,13 +35,19 @@ else ()
     message(FATAL_ERROR "Failed boost bootstraping")
   else ()
     #message(STATUS ${BOOST_BOOTSTRAP_OUTPUT})
-
     set(B2_COMMAND_AND_OPTIONS ${BOOST_B2}
       --prefix=${BOOST_BUILD_DIR}
       #--stagedir=${BOOST_BUILD_DIR}/stage
-      --builddir=${BOOST_BUILD_DIR}/build
-      --with-system
-      --with-thread
+      --builddir=${BOOST_BUILD_DIR}/build)
+
+    foreach (COMP IN ${BOOST_COMPONENTS})
+      set(B2_COMMAND_AND_OPTIONS
+          ${B2_COMMAND_AND_OPTIONS}
+          --with-${COMP})
+    endforeach ()
+
+    set(B2_COMMAND_AND_OPTIONS
+      ${B2_COMMAND_AND_OPTIONS}
       toolset=${BOOST_TOOLSET}
       architecture=x86
       address-model=64
@@ -49,7 +56,9 @@ else ()
       install
     )
 
+    message(STATUS "Boost build command line:\r\n${B2_COMMAND_AND_OPTIONS}")
     execute_process(COMMAND ${B2_COMMAND_AND_OPTIONS}
+      OUTPUT_VARIABLE BOOST_BOOTSTRAP_OUTPUT
       WORKING_DIRECTORY ${BOOST_SOURCE_DIR})
   endif ()
 endif ()
