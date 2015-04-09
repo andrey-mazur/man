@@ -5,7 +5,8 @@ if (NOT DEFINED QT_DIR)
 else ()
   message(STATUS "Building Qt from: ${QT_DIR}")
 
-  if (NOT ${CMAKE_PREFIX_PATH} MATCHES ${QT_DIR})
+  if (NOT DEFINED CMAKE_PREFIX_PATH
+    OR NOT ${CMAKE_PREFIX_PATH} MATCHES "${QT_DIR}")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${QT_DIR})
     set(CMAKE_AUTOMOC ON)
   endif ()

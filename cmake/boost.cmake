@@ -44,7 +44,7 @@ else ()
       set(B2_COMMAND_AND_OPTIONS
           ${B2_COMMAND_AND_OPTIONS}
           --with-${COMP})
-    endforeach ()
+    endforeach (COMP IN ${BOOST_COMPONENTS})
 
     set(B2_COMMAND_AND_OPTIONS
       ${B2_COMMAND_AND_OPTIONS}
