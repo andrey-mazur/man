@@ -1,20 +1,19 @@
 #include <iostream>
 #include <boost/thread/thread.hpp>
 #include <QApplication>
-#include <QDeclarativeView>
+#include <QQmlApplicationEngine>
 #if Q_OS_WIN
 #include <asiosdk/common/asio.h>
 #endif
 
 int main(int argc, char *argv[])
 {
-  std::cout << "TestApp" << std::endl;
+	std::cout << "TestApp" << std::endl;
 
-  QApplication app(argc, argv);
-  QDeclarativeView * view = new QDeclarativeView();
-  view->setSource(QUrl(""));
-  view->show();
-  app.exec();
+	QApplication app(argc, argv);
+	QQmlApplicationEngine engine;
+	engine.load(QUrl("qrc:/main.qml"));
+	app.exec();
 
-  return 0;
+	return 0;
 }
