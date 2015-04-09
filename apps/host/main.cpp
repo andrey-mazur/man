@@ -2,7 +2,7 @@
 #include <boost/thread/thread.hpp>
 #include <QApplication>
 #include <QQmlApplicationEngine>
-#if Q_OS_WIN
+#ifdef Q_OS_WIN
 #include <asiosdk/common/asio.h>
 #endif
 
