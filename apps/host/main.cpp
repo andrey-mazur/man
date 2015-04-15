@@ -2,9 +2,7 @@
 #include <boost/thread/thread.hpp>
 #include <QApplication>
 #include <QQmlApplicationEngine>
-#ifdef Q_OS_WIN
-#include <asiosdk/common/asio.h>
-#endif
+#include <manAudioDevice/manAudioDeviceList.h>
 
 int main(int argc, char *argv[])
 {
