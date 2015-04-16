@@ -8,6 +8,7 @@ int main(int argc, char *argv[])
 {
 	std::cout << "TestApp" << std::endl;
 
+	manAudioDeviceList list;
 	QApplication app(argc, argv);
 	QQmlApplicationEngine engine;
 	engine.load(QUrl("qrc:/main.qml"));
