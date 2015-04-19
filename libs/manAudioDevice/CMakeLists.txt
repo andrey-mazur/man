@@ -25,6 +25,8 @@ set(manAudioDevice_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include
 
 include_directories(${manAudioDevice_INCLUDE_DIR})
 
+add_definitions(-DNOMINMAX)
+
 add_library(manAudioDevice STATIC
     ${sources_}
     ${headers_}
