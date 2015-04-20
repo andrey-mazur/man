@@ -3,6 +3,9 @@
 #ifdef _WIN32
 #include "pc/manAsioDevice.h"
 #include <asiosdk/host/asiodrivers.h>
+#elif __APPLE__
+#include "mac/CoreAudioDevice.h"
+#include "mac/CoreAudioDeviceList.h"
 #endif
 
 manAudioDeviceList::manAudioDeviceList()
@@ -11,6 +14,7 @@ manAudioDeviceList::manAudioDeviceList()
 
 std::vector<std::string> manAudioDeviceList::enumerateDevices()
 {
+#ifdef _WIN32
 	AsioDrivers driverList;
 
 	const long maxDrivers = 8;
@@ -29,16 +33,25 @@ std::vector<std::string> manAudioDeviceList::enumerateDevices()
 		{
 			v.push_back(names[i]);
 		}
-		
+
 		delete[] names[i];
 	}
 
 	return v;
+#elif __APPLE__
+	CoreAudioDeviceList deviceList;
+	return deviceList.enumerateDevices();
+#endif
 }
 
 manAudioDevice * manAudioDeviceList::create(const std::string& name)
 {
+#ifdef _WIN32
 	manAsioDevice * device = new manAsioDevice();
 	device->create(name);
 	return device;
+#elif __APPLE__
+	CoreAudioDeviceList deviceList;
+	return deviceList.create(name);
+#endif
 }

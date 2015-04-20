@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.2)
 
+if (APPLE)
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11")
+endif ()
+
 include(../../cmake/boost.cmake)
 include(../../cmake/qt.cmake)
 
@@ -32,3 +36,12 @@ target_link_libraries(TestApp
     ${Boost_LIBRARIES}
     manAudioDevice
     manWaveform)
+
+if (WIN32)
+    target_link_libraries(TestApp asiosdk)
+elseif (APPLE)
+    target_link_libraries(TestApp
+        "-framework CoreFoundation"
+        "-framework AudioUnit"
+    )
+endif ()

@@ -16,7 +16,7 @@ file(GLOB_RECURSE headers_ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 file(GLOB sources_ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     src/*.cpp)
 file(GLOB platformSources_ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-    src/${platformDir_}/*.cpp)
+    src/${platformDir_}/*.cpp src/${platformDir_}/*.mm)
 file(GLOB platformHeaders_ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     src/${platformDir_}/*.h)
 
@@ -32,7 +32,3 @@ add_library(manAudioDevice STATIC
     ${headers_}
     ${platformSources_}
     ${platformHeaders_})
-
-if (WIN32)
-    target_link_libraries(manAudioDevice asiosdk)
-endif ()
