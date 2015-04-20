@@ -4,7 +4,9 @@
 #include <asiosdk/common/asio.h>
 #include <asiosdk/host/asiodrivers.h>
 #include <stdint.h>
+#ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 
 /* asio callbacks declarations */
@@ -50,7 +52,7 @@ public:
 			currentDevice = this;
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -79,14 +81,14 @@ public:
 			info->channelNum = i;
 			info->buffers[0] = info->buffers[1] = nullptr;
 		}
-		
+
 		for (long i = 0; i < _numOutputChannels; i++, info++)
 		{
 			info->isInput = ASIOFalse;
 			info->channelNum = i;
 			info->buffers[0] = info->buffers[1] = nullptr;
 		}
-		
+
 		ASIOCreateBuffers(_bufferInfos, _numInputChannels + _numOutputChannels, _preferredBufferSize, &_callbacks);
 	}
 
@@ -105,7 +107,7 @@ public:
 		ASIODisposeBuffers();
 		delete[] _bufferInfos;
 		_bufferInfos = nullptr;
-		
+
 		ASIOExit();
 		currentDevice = nullptr;
 	}
@@ -141,20 +143,29 @@ long asio_message(long selector, long value, void * message, double * opt)
 
 ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool directProcess)
 {
-	ASIOBufferInfo * info = currentDevice->_bufferInfos;
-	info += currentDevice->_numInputChannels;
 	const double bufferSize = currentDevice->_preferredBufferSize;
 	const double freq = 440.0;
+	const double d = 2.0 * M_PI * freq / currentDevice->_sampleRate;
 	static double sinValue = 0.0;
-	for (long i = 0; i < currentDevice->_numOutputChannels; ++i)
+	const double amplitude = 0.02;
+	
+	for (long j = 0; j < bufferSize; ++j)
 	{
-		for (long j = 0; j < bufferSize; ++j)
+		int32_t value = static_cast<int32_t>(amplitude * std::sin(sinValue) * std::numeric_limits<int32_t>::max());
+		
+		ASIOBufferInfo * info = currentDevice->_bufferInfos;
+		info += currentDevice->_numInputChannels;
+		for (long i = 0; i < currentDevice->_numOutputChannels; ++i, ++info)
 		{
-			int32_t * ptr = reinterpret_cast<int32_t *>(info[i].buffers[index]);
+			int32_t * input = reinterpret_cast<int32_t *>(currentDevice->_bufferInfos[i].buffers[index]);
+			input += j;
+			
+			int32_t * ptr = reinterpret_cast<int32_t *>(info->buffers[index]);
 			ptr += j;
-			*ptr = static_cast<int32_t>(std::sin(sinValue) * 0.02 * std::numeric_limits<int32_t>::max());
-			sinValue += M_2_PI * freq * (static_cast<double>(j) / bufferSize / currentDevice->_sampleRate);
+			*ptr = value;
+			*ptr += *input;
 		}
+		sinValue += d;
 	}
 
 	if (currentDevice->_asioOutputReady)

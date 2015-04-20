@@ -12,21 +12,14 @@ endif ()
 
 set(headers_
     ${ASIOSDK_DIR}/common/asio.h
+    ${ASIOSDK_DIR}/common/asiosys.h
     ${ASIOSDK_DIR}/host/asiodrivers.h
-    ${ASIOSDK_DIR}/host/asiosys.h
     ${ASIOSDK_DIR}/host/ginclude.h)
-#file(GLOB headers_ ABSOLUTE
-#  ${ASIOSDK_DIR}/common/*.h
-#  ${ASIOSDK_DIR}/host/*.h)
-#list(REMOVE_ITEM headers_ ${ASIOSDK_DIR}/common/asiodrvr.h)
 
 set(sources_
 	${ASIOSDK_DIR}/common/asio.cpp
 	${ASIOSDK_DIR}/host/asiodrivers.cpp)
-#file(GLOB sources_ ABSOLUTE
-#  ${ASIOSDK_DIR}/common/*.cpp
-#  ${ASIOSDK_DIR}/host/*.cpp)
-#list(REMOVE_ITEM sources_ ${ASIOSDK_DIR}/common/asiodrvr.cpp)
+
 source_group("" FILES ${headers_} ${sources_})
 
 if (WIN32)
