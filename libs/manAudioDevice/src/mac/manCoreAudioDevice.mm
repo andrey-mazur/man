@@ -1,74 +1,66 @@
-#import "CoreAudioDevice.h"
+#import "manCoreAudioDevice.h"
 
-#import <AudioUnit/AudioUnit.h>
+#import <CoreAudio/CoreAudio.h>
+#import <math.h>
+#import <vector>
 
 
-class CoreAudioDevicePrivate
+class manCoreAudioDevicePrivate
 {
 public:
-	CoreAudioDevicePrivate()
-		: _audioUnit(NULL)
-		, _audioFormat{}
+	manCoreAudioDevicePrivate()
 	{
 	}
-	
+
 	bool create(const std::string& name)
 	{
-		// TODO: remove copy-paste
-		AudioComponentDescription desc = {};
-		desc.componentType = kAudioUnitType_Output;
-		desc.componentSubType = kAudioUnitSubType_HALOutput;
-		
-		UInt32 devicesFound = AudioComponentCount(&desc);
-		AudioComponent component = NULL;
-		for (UInt32 i = 0; i < devicesFound; ++i)
+		// TODO: remove duplicated code in manCoreAudioDeviceList.mm
+		const AudioDeviceID device = kAudioObjectSystemObject;
+		AudioObjectPropertyAddress theAddress = { kAudioObjectPropertyScopeGlobal, kAudioHardwarePropertyDevices, kAudioObjectPropertyElementMaster };
+
+		UInt32 size = 0;
+		AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
+
+		if (size)
 		{
-			component = AudioComponentFindNext(component, &desc);
-			CFStringRef componentName = NULL;
-			AudioComponentCopyName(component, &componentName);
-			const char * rawData = CFStringGetCStringPtr(componentName, kCFStringEncodingUTF8);
-			if (name == rawData)
-			{
-				CFRelease(componentName);
-				break;
-			}
-			CFRelease(componentName);
+			std::vector<char> vData(size);
+			AudioObjectGetPropertyData(device, &theAddress, 0, NULL, &size, &vData.front());
 		}
-		
-		if (component)
-		{
-			AudioComponentInstanceNew(component, &_audioUnit);
-			
-			if (_audioUnit)
-			{
-				UInt32 size = sizeof(_audioFormat);
-				AudioUnitGetProperty(_audioUnit,
-									 kAudioUnitProperty_StreamFormat,
-									 kAudioUnitScope_Output,
-									 0,
-									 &_audioFormat,
-									 &size);
-			}
-		}
-			
+
 		return false;
 	}
-	
-	AudioUnit _audioUnit;
-	AudioStreamBasicDescription _audioFormat;
+
+	void start()
+	{
+	}
+
+	void stop()
+	{
+	}
 };
 
-void CoreAudioDevice::create(const std::string& name)
+
+manCoreAudioDevice::manCoreAudioDevice()
 {
-	
+	_private = new manCoreAudioDevicePrivate();
 }
 
-void CoreAudioDevice::start()
+manCoreAudioDevice::~manCoreAudioDevice()
 {
-
+	delete _private;
 }
 
-void CoreAudioDevice::stop()
+void manCoreAudioDevice::create(const std::string& name)
 {
-    
+	_private->create(name);
+}
+
+void manCoreAudioDevice::start()
+{
+	_private->start();
+}
+
+void manCoreAudioDevice::stop()
+{
+	_private->stop();
 }

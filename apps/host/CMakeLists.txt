@@ -42,6 +42,6 @@ if (WIN32)
 elseif (APPLE)
     target_link_libraries(TestApp
         "-framework CoreFoundation"
-        "-framework AudioUnit"
+        "-framework CoreAudio"
     )
 endif ()

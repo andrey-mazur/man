@@ -3,11 +3,11 @@
 #include <vector>
 #include <string>
 
-class CoreAudioDevice;
-class CoreAudioDeviceList
+class manCoreAudioDevice;
+class manCoreAudioDeviceList
 {
 public:
 	std::vector<std::string> enumerateDevices();
 	
-	CoreAudioDevice * create(const std::string& name);
+	manCoreAudioDevice * create(const std::string& name);
 };

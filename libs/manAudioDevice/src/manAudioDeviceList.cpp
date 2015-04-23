@@ -18,7 +18,7 @@ std::vector<std::string> manAudioDeviceList::enumerateDevices()
 	manAsioDeviceList deviceList;
 	return deviceList.enumerateDevices();
 #elif __APPLE__
-	CoreAudioDeviceList deviceList;
+	manCoreAudioDeviceList deviceList;
 	return deviceList.enumerateDevices();
 #endif
 }
@@ -30,7 +30,7 @@ manAudioDevice * manAudioDeviceList::create(const std::string& name)
 	device->create(name);
 	return device;
 #elif __APPLE__
-	CoreAudioDeviceList deviceList;
+	manCoreAudioDeviceList deviceList;
 	return deviceList.create(name);
 #endif
 }
