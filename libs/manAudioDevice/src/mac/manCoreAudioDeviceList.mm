@@ -4,22 +4,7 @@
 #import <locale>
 #import <codecvt>
 #import "manCoreAudioDevice.h"
-
-
-template<class T>
-T audioObjectGetPropertyData(AudioDeviceID device, AudioObjectPropertyScope inScope, AudioDevicePropertyID inPropertyID, AudioObjectPropertyElement inElement = kAudioObjectPropertyElementMaster)
-{
-	AudioObjectPropertyAddress theAddress = { inPropertyID, inScope, inElement };
-	
-	UInt32 size = sizeof(T);
-	T retVal;
-	if (AudioObjectGetPropertyData(device, &theAddress, 0, NULL, &size, &retVal) == noErr)
-	{
-		return retVal;
-	}
-	
-	return T(0);
-}
+#import "manCoreAudioHelper.h"
 
 
 std::vector<std::string> manCoreAudioDeviceList::enumerateDevices()
@@ -32,41 +17,47 @@ std::vector<std::string> manCoreAudioDeviceList::enumerateDevices()
 	AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
 
 	std::vector<std::string> v;
-	std::vector<AudioDeviceID> deviceIds;
 	if (size)
 	{
+		std::vector<AudioDeviceID> deviceIds;
 		deviceIds.resize(size / sizeof(AudioDeviceID));
 		AudioObjectGetPropertyData(device, &theAddress, 0, NULL, &size, &deviceIds.front());
-		
+
 		for (std::vector<AudioDeviceID>::const_iterator it = deviceIds.begin();
 			 it != deviceIds.end(); ++it)
 		{
 			AudioDeviceID device = *it;
-			
-			CFStringRef deviceName = audioObjectGetPropertyData<CFStringRef>(device, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyName);
-			const char * rawData = CFStringGetCStringPtr(deviceName, kCFStringEncodingUTF8);
-			
-			if (rawData)
+
+			theAddress.mSelector = kAudioDevicePropertyStreams;
+			theAddress.mScope = kAudioDevicePropertyScopeOutput;
+			AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
+			if (size)
 			{
-				v.push_back(rawData);
-			}
-			else
-			{
-				CFIndex length = CFStringGetLength(deviceName);
-				if (length)
+				CFStringRef deviceName = audioObjectGetPropertyData<CFStringRef>(device, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyName);
+				const char * rawData = CFStringGetCStringPtr(deviceName, kCFStringEncodingUTF8);
+
+				if (rawData)
 				{
-					UniChar * buffer = new UniChar[length];
-					CFRange range = { 0, length };
-					CFStringGetCharacters(deviceName, range, buffer);
-					
-					std::u16string source = reinterpret_cast<char16_t *>(buffer);
-					std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
-					v.push_back(convert.to_bytes(source));
-					
-					delete [] buffer;
+					v.push_back(rawData);
 				}
+				else
+				{
+					CFIndex length = CFStringGetLength(deviceName);
+					if (length)
+					{
+						UniChar * buffer = new UniChar[length];
+						CFRange range = { 0, length };
+						CFStringGetCharacters(deviceName, range, buffer);
+
+						std::u16string source = reinterpret_cast<char16_t *>(buffer);
+						std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
+						v.push_back(convert.to_bytes(source));
+
+						delete [] buffer;
+					}
+				}
+				CFRelease(deviceName);
 			}
-			CFRelease(deviceName);
 		}
 	}
 

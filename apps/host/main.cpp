@@ -12,6 +12,9 @@ int main(int argc, char *argv[])
 	manAudioDeviceList list;
 	std::vector<std::string> deviceList = list.enumerateDevices();
 	std::for_each(deviceList.begin(), deviceList.end(), [](std::string& element){ std::cout << element; });
+#ifdef Q_OS_MAC
+	std::reverse(deviceList.begin(), deviceList.end());
+#endif
 	std::auto_ptr<manAudioDevice> device(list.create(deviceList.front()));
 	device->start();
 
