@@ -21,6 +21,7 @@ public:
 	manCoreAudioDevicePrivate()
 	: _deviceId(0)
 	, _procId(0)
+	, _streamFormat{0}
 	{
 	}
 
@@ -81,12 +82,13 @@ public:
 			
 			if (device > 0)
 			{
+				_deviceId = device;
+				
 				theAddress.mSelector = kAudioDevicePropertyStreamFormat;
 				theAddress.mScope = kAudioObjectPropertyScopeOutput;
 				AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
 				
-				//AudioStreamBasicDescription format = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
-				_deviceId = device;
+				_streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
 				
 				AudioDeviceCreateIOProcID(device, AudioDeviceIO, this, &_procId);
 			}
@@ -107,6 +109,7 @@ public:
 	
 	AudioDeviceID _deviceId;
 	AudioDeviceIOProcID _procId;
+	AudioStreamBasicDescription _streamFormat;
 };
 
 OSStatus AudioDeviceIO(AudioObjectID     inDevice,
@@ -117,6 +120,31 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 					 const AudioTimeStamp*   inOutputTime,
 					 void*                   inClientData)
 {
+	manCoreAudioDevicePrivate * privatePart = reinterpret_cast<manCoreAudioDevicePrivate *>(inClientData);
+	const float freq = 440.0f;
+	const float d = 2.0f * M_PI * freq / privatePart->_streamFormat.mSampleRate;
+	static float sinValue = 0.0f;
+	const float amplitude = 0.02f;
+	
+	for (UInt32 i = 0; i < outOutputData->mNumberBuffers; ++i)
+	{
+		float value = amplitude * sinf(sinValue) * std::numeric_limits<float>::max();
+		const double bufferSize = outOutputData->mBuffers[i].mDataByteSize / sizeof(float);
+		for (UInt32 j = 0; j < bufferSize;)
+		{
+			float * ptr = reinterpret_cast<float *>(outOutputData->mBuffers[i].mData);
+			ptr += j;
+			
+			for (UInt32 channel = 0; channel < outOutputData->mBuffers[i].mNumberChannels; ++channel)
+			{
+				*(ptr + channel) = value;
+				
+				++j;
+			}
+		}
+		sinValue += d;
+	}
+	
 	return noErr;
 }
 
