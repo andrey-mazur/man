@@ -11,8 +11,11 @@ public:
 	~manAsioDevice();
 
 	void create(const std::string& name);
-	void start();
-	void stop();
+	void start() override;
+	void stop() override;
+	void setAudioCallback(manAudioCallback) override;
+	float sampleRate() override;
+	long bufferSize() override;
 
 private:
 	manAsioDevicePrivate * _private;

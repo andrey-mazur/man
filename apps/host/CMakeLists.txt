@@ -13,8 +13,7 @@ add_subdirectory(../../libs/manAudioDevice manAudioDevice)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${manAudioDevice_INCLUDE_DIR})
 
-set(TestApp_SOURCES "main.cpp")
-
+file(GLOB_RECURSE TestApp_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} src/*.cpp)
 file(GLOB_RECURSE TestApp_QMLS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} qml/*.qml)
 file(GLOB_RECURSE TestApp_QRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} qml/*.qrc)
 qt5_add_resources(TestApp_RESOURCES ${TestApp_QRCS})
@@ -37,6 +36,10 @@ target_link_libraries(TestApp
     manAudioDevice
     manWaveform)
 
+add_dependencies(TestApp
+	manAudioDevice
+	manWaveform)
+
 if (WIN32)
     target_link_libraries(TestApp asiosdk)
 elseif (APPLE)
@@ -45,3 +48,8 @@ elseif (APPLE)
         "-framework CoreAudio"
     )
 endif ()
+
+
+add_custom_command(TARGET TestApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+	$<TARGET_FILE_DIR:manWaveform> "$<TARGET_FILE_DIR:TestApp>/manWaveform")

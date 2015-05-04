@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.2)
 
 message(STATUS "Building manAudioDevice...")
 
+include(../../cmake/boost.cmake)
+include_directories(${Boost_INCLUDE_DIRS})
+
 if (WIN32)
     include(../../cmake/asiosdk.cmake)
     include_directories(${ASIOSDK_INCLUDE_DIR})

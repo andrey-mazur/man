@@ -3,11 +3,7 @@
 #include <asiosdk/common/asiosys.h>
 #include <asiosdk/common/asio.h>
 #include <asiosdk/host/asiodrivers.h>
-#include <stdint.h>
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-#include <math.h>
+
 
 /* asio callbacks declarations */
 void asio_bufferSwitch(long index, ASIOBool directProcess);
@@ -20,23 +16,25 @@ class manAsioDevicePrivate
 {
 public:
 	manAsioDevicePrivate()
-		: _callbacks{}
-		, _driverInfo{}
-		, _numInputChannels(0)
-		, _numOutputChannels(0)
-		, _minBufferSize(0)
-		, _maxBufferSize(0)
-		, _preferredBufferSize(0)
-		, _granularity(0)
-		, _asioOutputReady(false)
-		, _bufferInfos(nullptr)
-		, _sampleRate{}
+		: callbacks{}
+		, driverInfo{}
+		, numInputChannels(0)
+		, numOutputChannels(0)
+		, minBufferSize(0)
+		, maxBufferSize(0)
+		, preferredBufferSize(0)
+		, granularity(0)
+		, asioOutputReady(false)
+		, bufferInfos(nullptr)
+		, sampleRate{}
+		, input(nullptr)
+		, output(nullptr)
 	{
-		_callbacks.bufferSwitch = asio_bufferSwitch;
-		_callbacks.sampleRateDidChange = asio_sampleRateDidChange;
-		_callbacks.asioMessage = asio_message;
-		_callbacks.bufferSwitchTimeInfo = asio_bufferSwitchTimeInfo;
-		_driverInfo.asioVersion = 2;
+		callbacks.bufferSwitch = asio_bufferSwitch;
+		callbacks.sampleRateDidChange = asio_sampleRateDidChange;
+		callbacks.asioMessage = asio_message;
+		callbacks.bufferSwitchTimeInfo = asio_bufferSwitchTimeInfo;
+		driverInfo.asioVersion = 2;
 	}
 
 	~manAsioDevicePrivate()
@@ -47,7 +45,7 @@ public:
 
 	bool create(const std::string& name)
 	{
-		if (_driverList.loadDriver(const_cast<char *>(name.c_str())))
+		if (driverList.loadDriver(const_cast<char *>(name.c_str())))
 		{
 			currentDevice = this;
 			return true;
@@ -58,38 +56,43 @@ public:
 
 	void init()
 	{
-		ASIOInit(&_driverInfo);
+		ASIOInit(&driverInfo);
 
-		ASIOGetChannels(&_numInputChannels, &_numOutputChannels);
+		ASIOGetChannels(&numInputChannels, &numOutputChannels);
 
-		ASIOGetBufferSize(&_minBufferSize, &_maxBufferSize, &_preferredBufferSize, &_granularity);
+		ASIOGetBufferSize(&minBufferSize, &maxBufferSize, &preferredBufferSize, &granularity);
 
-		ASIOGetSampleRate(&_sampleRate);
+		ASIOGetSampleRate(&sampleRate);
 
-		_asioOutputReady = ASIOOutputReady() == ASE_OK;
+		asioOutputReady = ASIOOutputReady() == ASE_OK;
 
-		if (_bufferInfos)
+		if (bufferInfos)
 		{
 			ASIODisposeBuffers();
-			delete[] _bufferInfos;
+			delete[] bufferInfos;
 		}
-		_bufferInfos = new ASIOBufferInfo[_numInputChannels + _numOutputChannels];
-		ASIOBufferInfo * info = _bufferInfos;
-		for (long i = 0; i < _numInputChannels; i++, info++)
+		bufferInfos = new ASIOBufferInfo[numInputChannels + numOutputChannels];
+		ASIOBufferInfo * info = bufferInfos;
+		for (long i = 0; i < numInputChannels; i++, info++)
 		{
 			info->isInput = ASIOTrue;
 			info->channelNum = i;
 			info->buffers[0] = info->buffers[1] = nullptr;
 		}
 
-		for (long i = 0; i < _numOutputChannels; i++, info++)
+		for (long i = 0; i < numOutputChannels; i++, info++)
 		{
 			info->isInput = ASIOFalse;
 			info->channelNum = i;
 			info->buffers[0] = info->buffers[1] = nullptr;
 		}
 
-		ASIOCreateBuffers(_bufferInfos, _numInputChannels + _numOutputChannels, _preferredBufferSize, &_callbacks);
+		ASIOCreateBuffers(bufferInfos, numInputChannels + numOutputChannels, preferredBufferSize, &callbacks);
+
+		delete[] input;
+		input = new void *[numInputChannels];
+		delete[] output;
+		output = new void *[numOutputChannels];
 	}
 
 	void start()
@@ -104,26 +107,37 @@ public:
 
 	void close()
 	{
+		delete[] input;
+		delete[] output;
+
 		ASIODisposeBuffers();
-		delete[] _bufferInfos;
-		_bufferInfos = nullptr;
+		delete[] bufferInfos;
+		bufferInfos = nullptr;
 
 		ASIOExit();
 		currentDevice = nullptr;
 	}
 
-	AsioDrivers _driverList;
-	ASIOCallbacks _callbacks;
-	ASIODriverInfo _driverInfo;
-	long _numInputChannels;
-	long _numOutputChannels;
-	long _minBufferSize;
-	long _maxBufferSize;
-	long _preferredBufferSize;
-	long _granularity;
-	bool _asioOutputReady;
-	ASIOBufferInfo * _bufferInfos;
-	ASIOSampleRate _sampleRate;
+	void setAudioCallback(manAudioCallback callback)
+	{
+		audioCallback = callback;
+	}
+
+	AsioDrivers driverList;
+	ASIOCallbacks callbacks;
+	ASIODriverInfo driverInfo;
+	long numInputChannels;
+	long numOutputChannels;
+	long minBufferSize;
+	long maxBufferSize;
+	long preferredBufferSize;
+	long granularity;
+	bool asioOutputReady;
+	ASIOBufferInfo * bufferInfos;
+	ASIOSampleRate sampleRate;
+	manAudioCallback audioCallback;
+	void ** input;
+	void ** output;
 };
 
 /* asio callbacks */
@@ -143,32 +157,21 @@ long asio_message(long selector, long value, void * message, double * opt)
 
 ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool directProcess)
 {
-	const double bufferSize = currentDevice->_preferredBufferSize;
-	const double freq = 440.0;
-	const double d = 2.0 * M_PI * freq / currentDevice->_sampleRate;
-	static double sinValue = 0.0;
-	const double amplitude = 0.02;
-	
-	for (long j = 0; j < bufferSize; ++j)
+	if (currentDevice->audioCallback)
 	{
-		int32_t value = static_cast<int32_t>(amplitude * std::sin(sinValue) * std::numeric_limits<int32_t>::max());
-		
-		ASIOBufferInfo * info = currentDevice->_bufferInfos;
-		info += currentDevice->_numInputChannels;
-		for (long i = 0; i < currentDevice->_numOutputChannels; ++i, ++info)
+		for (int i = 0; i < currentDevice->numInputChannels; ++i)
 		{
-			int32_t * input = reinterpret_cast<int32_t *>(currentDevice->_bufferInfos[i].buffers[index]);
-			input += j;
-			
-			int32_t * ptr = reinterpret_cast<int32_t *>(info->buffers[index]);
-			ptr += j;
-			*ptr = value;
-			*ptr += *input;
+			currentDevice->input[i] = currentDevice->bufferInfos[i].buffers[index];
 		}
-		sinValue += d;
+		for (int i = 0; i < currentDevice->numInputChannels; ++i)
+		{
+			currentDevice->output[i] = currentDevice->bufferInfos[i + currentDevice->numInputChannels].buffers[index];
+		}
+		currentDevice->audioCallback(currentDevice->input, currentDevice->numInputChannels,
+			currentDevice->output, currentDevice->numOutputChannels);
 	}
 
-	if (currentDevice->_asioOutputReady)
+	if (currentDevice->asioOutputReady)
 	{
 		ASIOOutputReady();
 	}
@@ -203,4 +206,19 @@ void manAsioDevice::start()
 void manAsioDevice::stop()
 {
 	_private->stop();
+}
+
+void manAsioDevice::setAudioCallback(manAudioCallback callback)
+{
+	_private->setAudioCallback(callback);
+}
+
+float manAsioDevice::sampleRate()
+{
+	return static_cast<float>(_private->sampleRate);
+}
+
+long manAsioDevice::bufferSize()
+{
+	return _private->preferredBufferSize;
 }

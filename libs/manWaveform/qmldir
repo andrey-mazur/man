@@ -1,0 +1,3 @@
+module manWaveform
+plugin manWaveform
+classname manWaveformQmlPlugin
