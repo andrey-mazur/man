@@ -5,12 +5,14 @@ class manAudioEngine
 {
 public:
 	explicit manAudioEngine();
+	~manAudioEngine();
 
     void process(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer);
-	
-	template <typename T>
 	void sinWave(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer);
 
 private:
 	manAudioDevice * _device;
+	SampleFormat _format;
+	size_t _bytesPerSample;
+	boost::function<void(float, uint8_t *)> _conversionFunction;
 };

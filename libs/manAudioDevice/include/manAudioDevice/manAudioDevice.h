@@ -1,11 +1,20 @@
 #pragma once
 #include <boost/function.hpp>
 
+enum SampleFormat
+{
+	SampleFormat_Unknown,
+	SampleFormat_Int16,
+	SampleFormat_Int32,
+	SampleFormat_Float32
+};
+typedef enum SampleFormat SampleFormat;
+
 struct manAudioBuffer
 {
-	int numChannels;
-	int numLengthInBytes;
-	void * data;
+	size_t numChannels;
+	size_t numLengthInBytes;
+	void ** data;
 };
 typedef struct manAudioBuffer manAudioBuffer;
 
@@ -27,4 +36,5 @@ public:
 	virtual void stop() = 0;
 	virtual void setAudioCallback(manAudioCallback) = 0;
 	virtual float sampleRate() = 0;
+	virtual SampleFormat sampleFormat() = 0;
 };

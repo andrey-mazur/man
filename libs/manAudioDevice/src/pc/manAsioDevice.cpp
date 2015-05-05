@@ -72,19 +72,29 @@ public:
 			delete[] bufferInfos;
 		}
 		bufferInfos = new ASIOBufferInfo[numInputChannels + numOutputChannels];
-		ASIOBufferInfo * info = bufferInfos;
-		for (long i = 0; i < numInputChannels; i++, info++)
+		ASIOBufferInfo * bufferDesc = bufferInfos;
+		channelInfos = new ASIOChannelInfo[numInputChannels + numOutputChannels];
+		ASIOChannelInfo * channelDesc = channelInfos;
+		for (long i = 0; i < numInputChannels; i++, bufferDesc++, channelDesc++)
 		{
-			info->isInput = ASIOTrue;
-			info->channelNum = i;
-			info->buffers[0] = info->buffers[1] = nullptr;
+			bufferDesc->isInput = ASIOTrue;
+			bufferDesc->channelNum = i;
+			bufferDesc->buffers[0] = bufferDesc->buffers[1] = nullptr;
+			
+			channelDesc->channel = i;
+			channelDesc->isInput = ASIOTrue;
+			ASIOGetChannelInfo(channelDesc);
 		}
 
-		for (long i = 0; i < numOutputChannels; i++, info++)
+		for (long i = 0; i < numOutputChannels; i++, bufferDesc++, channelDesc++)
 		{
-			info->isInput = ASIOFalse;
-			info->channelNum = i;
-			info->buffers[0] = info->buffers[1] = nullptr;
+			bufferDesc->isInput = ASIOFalse;
+			bufferDesc->channelNum = i;
+			bufferDesc->buffers[0] = bufferDesc->buffers[1] = nullptr;
+
+			channelDesc->channel = i;
+			channelDesc->isInput = ASIOFalse;
+			ASIOGetChannelInfo(channelDesc);
 		}
 
 		ASIOCreateBuffers(bufferInfos, numInputChannels + numOutputChannels, preferredBufferSize, &callbacks);
@@ -114,6 +124,9 @@ public:
 		delete[] bufferInfos;
 		bufferInfos = nullptr;
 
+		delete[] channelInfos;
+		channelInfos = nullptr;
+
 		ASIOExit();
 		currentDevice = nullptr;
 	}
@@ -121,6 +134,19 @@ public:
 	void setAudioCallback(manAudioCallback callback)
 	{
 		audioCallback = callback;
+	}
+
+	SampleFormat sampleFormat() const
+	{
+		switch (channelInfos->type)
+		{
+		case ASIOSTInt32LSB:
+			return SampleFormat_Int32;
+		case ASIOSTFloat32LSB:
+			return SampleFormat_Float32;
+		}
+
+		return SampleFormat_Unknown;
 	}
 
 	AsioDrivers driverList;
@@ -134,6 +160,7 @@ public:
 	long granularity;
 	bool asioOutputReady;
 	ASIOBufferInfo * bufferInfos;
+	ASIOChannelInfo * channelInfos;
 	ASIOSampleRate sampleRate;
 	manAudioCallback audioCallback;
 	void ** input;
@@ -159,16 +186,22 @@ ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool dir
 {
 	if (currentDevice->audioCallback)
 	{
+		const long bytesPerChannel = currentDevice->preferredBufferSize * sizeof(int32_t);
 		for (int i = 0; i < currentDevice->numInputChannels; ++i)
 		{
 			currentDevice->input[i] = currentDevice->bufferInfos[i].buffers[index];
 		}
-		for (int i = 0; i < currentDevice->numInputChannels; ++i)
+		manAudioBuffer inputBuffer = { currentDevice->numInputChannels,
+			bytesPerChannel * currentDevice->numInputChannels, currentDevice->input };
+		
+		for (int i = 0; i < currentDevice->numOutputChannels; ++i)
 		{
 			currentDevice->output[i] = currentDevice->bufferInfos[i + currentDevice->numInputChannels].buffers[index];
 		}
-		currentDevice->audioCallback(currentDevice->input, currentDevice->numInputChannels,
-			currentDevice->output, currentDevice->numOutputChannels);
+		manAudioBuffer outputBuffer = { currentDevice->numOutputChannels,
+			bytesPerChannel * currentDevice->numOutputChannels, currentDevice->output };
+		
+		currentDevice->audioCallback(inputBuffer, outputBuffer);
 	}
 
 	if (currentDevice->asioOutputReady)
@@ -186,7 +219,6 @@ manAsioDevice::manAsioDevice()
 
 manAsioDevice::~manAsioDevice()
 {
-	currentDevice = nullptr;
 	delete _private;
 }
 
@@ -218,7 +250,7 @@ float manAsioDevice::sampleRate()
 	return static_cast<float>(_private->sampleRate);
 }
 
-long manAsioDevice::bufferSize()
+SampleFormat manAsioDevice::sampleFormat()
 {
-	return _private->preferredBufferSize;
+	return _private->sampleFormat();
 }
