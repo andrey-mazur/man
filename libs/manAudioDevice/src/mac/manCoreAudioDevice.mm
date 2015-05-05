@@ -19,10 +19,15 @@ class manCoreAudioDevicePrivate
 {
 public:
 	manCoreAudioDevicePrivate()
-	: _deviceId(0)
-	, _procId(0)
-	, _streamFormat{0}
+	: deviceId(0)
+	, procId(0)
+	, streamFormat{0}
 	{
+	}
+	
+	~manCoreAudioDevicePrivate()
+	{
+		AudioDeviceDestroyIOProcID(deviceId, procId);
 	}
 
 	bool create(const std::string& name)
@@ -82,15 +87,15 @@ public:
 			
 			if (device > 0)
 			{
-				_deviceId = device;
+				deviceId = device;
 				
 				theAddress.mSelector = kAudioDevicePropertyStreamFormat;
 				theAddress.mScope = kAudioObjectPropertyScopeOutput;
 				AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
 				
-				_streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
+				streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
 				
-				AudioDeviceCreateIOProcID(device, AudioDeviceIO, this, &_procId);
+				AudioDeviceCreateIOProcID(device, AudioDeviceIO, this, &procId);
 			}
 		}
 
@@ -99,17 +104,28 @@ public:
 
 	void start()
 	{
-		AudioDeviceStart(_deviceId, _procId);
+		AudioDeviceStart(deviceId, procId);
 	}
 
 	void stop()
 	{
-		AudioDeviceStop(_deviceId, _procId);
+		AudioDeviceStop(deviceId, procId);
 	}
 	
-	AudioDeviceID _deviceId;
-	AudioDeviceIOProcID _procId;
-	AudioStreamBasicDescription _streamFormat;
+	void setCallback(manAudioCallback callback)
+	{
+		audioCallback = callback;
+	}
+	
+	float sampleRate() const
+	{
+		return streamFormat.mSampleRate;
+	}
+	
+	AudioDeviceID deviceId;
+	AudioDeviceIOProcID procId;
+	AudioStreamBasicDescription streamFormat;
+	manAudioCallback audioCallback;
 };
 
 OSStatus AudioDeviceIO(AudioObjectID     inDevice,
@@ -121,8 +137,26 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 					 void*                   inClientData)
 {
 	manCoreAudioDevicePrivate * privatePart = reinterpret_cast<manCoreAudioDevicePrivate *>(inClientData);
+	if (privatePart->audioCallback)
+	{
+		manAudioBuffer inputBuffer = {};
+		if (inInputData->mNumberBuffers)
+		{
+			inputBuffer = {static_cast<int>(inInputData->mBuffers->mNumberChannels),
+				static_cast<int>(inInputData->mBuffers->mDataByteSize), inInputData->mBuffers->mData};
+		}
+		
+		manAudioBuffer outputBuffer = {};
+		if (outOutputData->mNumberBuffers)
+		{
+			outputBuffer = {static_cast<int>(outOutputData->mBuffers->mNumberChannels),
+				static_cast<int>(outOutputData->mBuffers->mDataByteSize), outOutputData->mBuffers->mData};
+		}
+		privatePart->audioCallback(inputBuffer, outputBuffer);
+	}
+	/*
 	const float freq = 440.0f;
-	const float d = 2.0f * M_PI * freq / privatePart->_streamFormat.mSampleRate;
+	const float d = 2.0f * M_PI * freq / privatePart->streamFormat.mSampleRate;
 	static float sinValue = 0.0f;
 	const float amplitude = 0.02f;
 	
@@ -144,6 +178,7 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 		}
 		sinValue += d;
 	}
+	 */
 	
 	return noErr;
 }
@@ -172,4 +207,14 @@ void manCoreAudioDevice::start()
 void manCoreAudioDevice::stop()
 {
 	_private->stop();
+}
+
+void manCoreAudioDevice::setAudioCallback(manAudioCallback callback)
+{
+	_private->setCallback(callback);
+}
+
+float manCoreAudioDevice::sampleRate()
+{
+	return _private->sampleRate();
 }

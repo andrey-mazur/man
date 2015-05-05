@@ -9,13 +9,15 @@ file(GLOB_RECURSE manWaveform_SOURCES src/*.cpp)
 file(GLOB_RECURSE manWaveform_HEADERS include/*.h)
 file(GLOB manWaveform_QMLDIR qmldir)
 
+set(define "-DQT_QUICK_VER=${Qt5Quick_VERSION_STRING}")
+add_definitions(${define})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${QT_DIR}/include/QtCore/5.4.1/QtCore)
-include_directories(${QT_DIR}/include/QtGui/5.4.1)
-include_directories(${QT_DIR}/include/QtGui/5.4.1/QtGui)
-include_directories(${QT_DIR}/include/QtQuick/5.4.1)
-include_directories(${QT_DIR}/include/QtQuick/5.4.1/QtQuick)
+include_directories(${QT_DIR}/include/QtCore/${Qt5Core_VERSION_STRING}/QtCore)
+include_directories(${QT_DIR}/include/QtGui/${Qt5Gui_VERSION_STRING})
+include_directories(${QT_DIR}/include/QtGui/${Qt5Gui_VERSION_STRING}/QtGui)
+include_directories(${QT_DIR}/include/QtQuick/${Qt5Quick_VERSION_STRING})
+include_directories(${QT_DIR}/include/QtQuick/${Qt5Quick_VERSION_STRING}/QtQuick)
 add_library(manWaveform SHARED
     ${manWaveform_SOURCES}
     ${manWaveform_HEADERS}

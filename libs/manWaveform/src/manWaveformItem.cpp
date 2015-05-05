@@ -2,7 +2,7 @@
 #include <QtQuick/qsgsimplerectnode.h>
 #include <QtQuick/qsgsimpletexturenode.h>
 #include <QtQuick/qsgtextureprovider.h>
-#include <QtQuick/5.4.1/QtQuick/private/qsgtexture_p.h>
+#include <private/qsgtexture_p.h>
 #include <QtQuick/qquickwindow.h>
 #include <QtGui/QOpenGLFramebufferObject>
 

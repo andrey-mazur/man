@@ -22,26 +22,24 @@ manAudioEngine::manAudioEngine()
 #endif
 
 	_device = list.create(deviceList.front());
-	_device->setAudioCallback(boost::bind(&manAudioEngine::process, this, _1, _2, _3, _4));
+	_device->setAudioCallback(boost::bind(&manAudioEngine::process, this, _1, _2));
 	_device->start();
 }
 
-void manAudioEngine::process(void ** input, long numInputChannels,
-	void ** output, long numOutputChannels)
+void manAudioEngine::process(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer)
 {
 #ifdef Q_OS_MAC
 	typedef float SampleType;
 #else
 	typedef int32_t SampleType;
 #endif
-	sinWave<SampleType>(input, numInputChannels, output, numOutputChannels);
+	sinWave<SampleType>(inputBuffer, outputBuffer);
 }
 
 template <typename T>
-void manAudioEngine::sinWave(void ** input, long numInputChannels,
-	void ** output, long numOutputChannels)
+void manAudioEngine::sinWave(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer)
 {
-	const long bufferSize = _device->bufferSize();
+	const long bufferSize = outputBuffer.numLengthInBytes / outputBuffer.numChannels / sizeof(T);
 	const float freq = 440.0f;
 	const float d = 2.0f * static_cast<float>(M_PI) * freq / static_cast<float>(_device->sampleRate());
 	static float sinValue = 0.0f;
@@ -51,12 +49,14 @@ void manAudioEngine::sinWave(void ** input, long numInputChannels,
 	{
 		T value = static_cast<T>(amplitude * sin(sinValue) * std::numeric_limits<T>::max());
 
-		for (long i = 0; i < numOutputChannels; ++i)
+		for (long i = 0; i < outputBuffer.numChannels; ++i)
 		{
-			T * inputPtr = reinterpret_cast<T *>(input[i]);
+			T * inputPtr = reinterpret_cast<T *>(inputBuffer.data);
+			inputPtr += i;
 			inputPtr += j;
 
-			T * outputPtr = reinterpret_cast<T *>(output[i]);
+			T * outputPtr = reinterpret_cast<T *>(outputBuffer.data);
+			outputPtr += i;
 			outputPtr += j;
 			*outputPtr = value;
 			//*outputPtr += *inputPtr;

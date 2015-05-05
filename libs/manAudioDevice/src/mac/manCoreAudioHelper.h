@@ -1,4 +1,5 @@
 #pragma once
+#include <manAudioDevice/manAudioDevice.h>
 
 template<class T>
 T audioObjectGetPropertyData(AudioDeviceID device, AudioObjectPropertyScope inScope, AudioDevicePropertyID inPropertyID, AudioObjectPropertyElement inElement = kAudioObjectPropertyElementMaster)
@@ -13,4 +14,9 @@ T audioObjectGetPropertyData(AudioDeviceID device, AudioObjectPropertyScope inSc
 	}
 
 	return T{0};
+}
+
+manAudioBuffer manAudioBufferFromCoreAudio(AudioBuffer coreAudioBuffer)
+{
+	return manAudioBuffer();
 }

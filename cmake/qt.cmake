@@ -8,11 +8,11 @@ else ()
 
         if (NOT DEFINED CMAKE_PREFIX_PATH
         OR NOT ${CMAKE_PREFIX_PATH} MATCHES "${QT_DIR}")
-        set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${QT_DIR})
-        set(CMAKE_AUTOMOC ON)
+            set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${QT_DIR})
+            set(CMAKE_AUTOMOC ON)
         endif ()
 
-        find_package(Qt5 REQUIRED Core Gui Declarative)
+        find_package(Qt5 REQUIRED Core Gui Declarative Quick)
 
         if (Qt5_FOUND)
             #message(STATUS "Qt5 found")

@@ -1,17 +1,15 @@
 #pragma once
+#include <manAudioDevice/manAudioDevice.h>
 
-class manAudioDevice;
 class manAudioEngine
 {
 public:
 	explicit manAudioEngine();
 
-    void process(void ** input, long numInputChannels,
-		void ** output, long numOutputChannels);
+    void process(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer);
 	
 	template <typename T>
-	void sinWave(void ** input, long numInputChannels,
-		void ** output, long numOutputChannels);
+	void sinWave(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer);
 
 private:
 	manAudioDevice * _device;
