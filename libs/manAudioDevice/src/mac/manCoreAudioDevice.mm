@@ -199,34 +199,22 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 			// making output buffer interleaved
 			const size_t bytesPerSample = privatePart->streamFormat.mBytesPerFrame / outOutputData->mBuffers->mNumberChannels;
 			const size_t samplesPerChannel = outOutputData->mBuffers->mDataByteSize / bytesPerSample;
-			// TODO: algo
-		}
-	}
-	/*
-	const float freq = 440.0f;
-	const float d = 2.0f * M_PI * freq / privatePart->streamFormat.mSampleRate;
-	static float sinValue = 0.0f;
-	const float amplitude = 0.02f;
-	
-	for (UInt32 i = 0; i < outOutputData->mNumberBuffers; ++i)
-	{
-		float value = amplitude * sinf(sinValue) * std::numeric_limits<float>::max();
-		const double bufferSize = outOutputData->mBuffers[i].mDataByteSize / sizeof(float);
-		for (UInt32 j = 0; j < bufferSize;)
-		{
-			float * ptr = reinterpret_cast<float *>(outOutputData->mBuffers[i].mData);
-			ptr += j;
-			
-			for (UInt32 channel = 0; channel < outOutputData->mBuffers[i].mNumberChannels; ++channel)
+			size_t destIndex = 0;
+			for (size_t i = 0; i < samplesPerChannel; ++i)
 			{
-				*(ptr + channel) = value;
-				
-				++j;
+				for (size_t channel = 0; channel < outputBuffer.numChannels; ++channel, ++destIndex)
+				{
+					size_t stride = channel % outputBuffer.numChannels;
+					size_t sourceIndex = stride * samplesPerChannel + i;
+					
+					uint8_t tmp[bytesPerSample];
+					memcpy(tmp, static_cast<uint8_t *>(outputBuffer.data[channel]) + sourceIndex, bytesPerSample);
+					memcpy(static_cast<uint8_t *>(outputBuffer.data[channel]) + sourceIndex, static_cast<uint8_t *>(outputBuffer.data[channel]) + destIndex, bytesPerSample);
+					memcpy(static_cast<uint8_t *>(outputBuffer.data[channel]) + destIndex, tmp, bytesPerSample);
+				}
 			}
 		}
-		sinValue += d;
 	}
-	 */
 	
 	return noErr;
 }
