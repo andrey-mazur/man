@@ -15,6 +15,7 @@ public:
 	void stop() override;
 	void setAudioCallback(manAudioCallback) override;
 	float sampleRate() override;
+	SampleFormat sampleFormat() override;
 	
 private:
 	manCoreAudioDevicePrivate * _private;

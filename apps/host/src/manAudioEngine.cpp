@@ -26,6 +26,8 @@ static size_t getBytesPerSample(SampleFormat format)
 {
 	switch (format)
 	{
+	case SampleFormat_Unknown:
+		return 0;
 	case SampleFormat_Int16:
 		return sizeof(int16_t);
 	case SampleFormat_Int32:
@@ -41,6 +43,8 @@ static boost::function<void(float, uint8_t *)> getConversionFunction(SampleForma
 {
 	switch (format)
 	{
+	case SampleFormat_Unknown:
+		return &convert<float>;
 	case SampleFormat_Int16:
 		return &convert<int16_t>;
 	case SampleFormat_Int32:
@@ -99,8 +103,11 @@ void manAudioEngine::sinWave(const manAudioBuffer inputBuffer, manAudioBuffer ou
 
 		for (long i = 0; i < outputBuffer.numChannels; ++i)
 		{
-			uint8_t * inputPtr = reinterpret_cast<uint8_t *>(inputBuffer.data[i]);
-			inputPtr += j * _bytesPerSample;
+			if (inputBuffer.numChannels)
+			{
+				uint8_t * inputPtr = reinterpret_cast<uint8_t *>(inputBuffer.data[i]);
+				inputPtr += j * _bytesPerSample;
+			}
 
 			uint8_t * outputPtr = reinterpret_cast<uint8_t *>(outputBuffer.data[i]);
 			outputPtr += j * _bytesPerSample;

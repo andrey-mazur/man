@@ -15,8 +15,3 @@ T audioObjectGetPropertyData(AudioDeviceID device, AudioObjectPropertyScope inSc
 
 	return T{0};
 }
-
-manAudioBuffer manAudioBufferFromCoreAudio(AudioBuffer coreAudioBuffer)
-{
-	return manAudioBuffer();
-}

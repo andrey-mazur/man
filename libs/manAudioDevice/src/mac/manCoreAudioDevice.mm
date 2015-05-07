@@ -22,6 +22,8 @@ public:
 	: deviceId(0)
 	, procId(0)
 	, streamFormat{0}
+	, input(nullptr)
+	, output(nullptr)
 	{
 	}
 	
@@ -90,10 +92,27 @@ public:
 				deviceId = device;
 				
 				theAddress.mSelector = kAudioDevicePropertyStreamFormat;
+				theAddress.mScope = kAudioObjectPropertyScopeInput;
+				AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
+				
+				delete[] input;
+				input = nullptr;
+				if (size)
+				{
+					streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeInput, kAudioDevicePropertyStreamFormat);
+					input = new void*[streamFormat.mChannelsPerFrame];
+				}
+				
 				theAddress.mScope = kAudioObjectPropertyScopeOutput;
 				AudioObjectGetPropertyDataSize(device, &theAddress, 0, NULL, &size);
 				
-				streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
+				delete[] output;
+				output = nullptr;
+				if (size)
+				{
+					streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
+					output = new void*[streamFormat.mChannelsPerFrame];
+				}
 				
 				AudioDeviceCreateIOProcID(device, AudioDeviceIO, this, &procId);
 			}
@@ -122,10 +141,22 @@ public:
 		return streamFormat.mSampleRate;
 	}
 	
+	SampleFormat sampleFormat() const
+	{
+		if (streamFormat.mFormatFlags & kAudioFormatFlagIsFloat)
+		{
+			return SampleFormat_Float32;
+		}
+		
+		return SampleFormat_Unknown;
+	}
+	
 	AudioDeviceID deviceId;
 	AudioDeviceIOProcID procId;
 	AudioStreamBasicDescription streamFormat;
 	manAudioCallback audioCallback;
+	void ** input;
+	void ** output;
 };
 
 OSStatus AudioDeviceIO(AudioObjectID     inDevice,
@@ -139,20 +170,37 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 	manCoreAudioDevicePrivate * privatePart = reinterpret_cast<manCoreAudioDevicePrivate *>(inClientData);
 	if (privatePart->audioCallback)
 	{
+		// TODO: copy input buffer and make it non interleaved
 		manAudioBuffer inputBuffer = {};
 		if (inInputData->mNumberBuffers)
 		{
-			inputBuffer = {static_cast<int>(inInputData->mBuffers->mNumberChannels),
-				static_cast<int>(inInputData->mBuffers->mDataByteSize), inInputData->mBuffers->mData};
+			inputBuffer.numChannels = static_cast<size_t>(inInputData->mBuffers->mNumberChannels);
+			inputBuffer.numLengthInBytes = static_cast<size_t>(inInputData->mBuffers->mDataByteSize);
+			inputBuffer.data = privatePart->input;
 		}
 		
 		manAudioBuffer outputBuffer = {};
 		if (outOutputData->mNumberBuffers)
 		{
-			outputBuffer = {static_cast<int>(outOutputData->mBuffers->mNumberChannels),
-				static_cast<int>(outOutputData->mBuffers->mDataByteSize), outOutputData->mBuffers->mData};
+			outputBuffer.numChannels = static_cast<size_t>(outOutputData->mBuffers->mNumberChannels);
+			outputBuffer.numLengthInBytes = static_cast<size_t>(outOutputData->mBuffers->mDataByteSize);
+			uint8_t * rawPtr = reinterpret_cast<uint8_t *>(outOutputData->mBuffers->mData);
+			for (UInt32 i = 0; i < outputBuffer.numChannels; ++i)
+			{
+				privatePart->output[i] = rawPtr + i * outOutputData->mBuffers->mDataByteSize / outOutputData->mBuffers->mNumberChannels;
+			}
+			outputBuffer.data = privatePart->output;
+			
+			// CoreAudio uses interleaved buffer,
+			// pass it as is to application callback
+			// and make it interleaved after
+			privatePart->audioCallback(inputBuffer, outputBuffer);
+			
+			// making output buffer interleaved
+			const size_t bytesPerSample = privatePart->streamFormat.mBytesPerFrame / outOutputData->mBuffers->mNumberChannels;
+			const size_t samplesPerChannel = outOutputData->mBuffers->mDataByteSize / bytesPerSample;
+			// TODO: algo
 		}
-		privatePart->audioCallback(inputBuffer, outputBuffer);
 	}
 	/*
 	const float freq = 440.0f;
@@ -217,4 +265,9 @@ void manCoreAudioDevice::setAudioCallback(manAudioCallback callback)
 float manCoreAudioDevice::sampleRate()
 {
 	return _private->sampleRate();
+}
+
+SampleFormat manCoreAudioDevice::sampleFormat()
+{
+	return _private->sampleFormat();
 }
