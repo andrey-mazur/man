@@ -11,6 +11,18 @@ void asio_sampleRateDidChange(ASIOSampleRate sampleRate);
 long asio_message(long selector, long value, void * message, double * opt);
 ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool directProcess);
 
+inline void fromInt32ToFloatInPlace(void* buffer, int samples)
+{
+	const double kScaler32Reverse = 1.0 / 0x7fffffff;
+
+	int* intBuffer = (int*)buffer;
+	float* floatBuffer = (float*)buffer;
+	while(--samples >= 0)
+	{
+		*floatBuffer++ = (float)(kScaler32Reverse * (*intBuffer++));
+	}
+}
+
 manAsioDevicePrivate * currentDevice = nullptr;
 class manAsioDevicePrivate
 {
@@ -80,7 +92,7 @@ public:
 			bufferDesc->isInput = ASIOTrue;
 			bufferDesc->channelNum = i;
 			bufferDesc->buffers[0] = bufferDesc->buffers[1] = nullptr;
-			
+
 			channelDesc->channel = i;
 			channelDesc->isInput = ASIOTrue;
 			ASIOGetChannelInfo(channelDesc);
@@ -193,14 +205,14 @@ ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool dir
 		}
 		manAudioBuffer inputBuffer = { currentDevice->numInputChannels,
 			bytesPerChannel * currentDevice->numInputChannels, currentDevice->input };
-		
+
 		for (int i = 0; i < currentDevice->numOutputChannels; ++i)
 		{
 			currentDevice->output[i] = currentDevice->bufferInfos[i + currentDevice->numInputChannels].buffers[index];
 		}
 		manAudioBuffer outputBuffer = { currentDevice->numOutputChannels,
 			bytesPerChannel * currentDevice->numOutputChannels, currentDevice->output };
-		
+
 		currentDevice->audioCallback(inputBuffer, outputBuffer);
 	}
 
