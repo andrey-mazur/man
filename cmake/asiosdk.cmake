@@ -14,11 +14,13 @@ set(headers_
     ${ASIOSDK_DIR}/common/asio.h
     ${ASIOSDK_DIR}/common/asiosys.h
     ${ASIOSDK_DIR}/host/asiodrivers.h
-    ${ASIOSDK_DIR}/host/ginclude.h)
+    ${ASIOSDK_DIR}/host/ginclude.h
+    ${ASIOSDK_DIR}/host/ASIOConvertSamples.h)
 
 set(sources_
 	${ASIOSDK_DIR}/common/asio.cpp
-	${ASIOSDK_DIR}/host/asiodrivers.cpp)
+	${ASIOSDK_DIR}/host/asiodrivers.cpp
+    ${ASIOSDK_DIR}/host/ASIOConvertSamples.cpp)
 
 source_group("" FILES ${headers_} ${sources_})
 

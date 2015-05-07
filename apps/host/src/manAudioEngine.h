@@ -1,5 +1,6 @@
 #pragma once
 #include <manAudioDevice/manAudioDevice.h>
+#include <vector>
 
 class manAudioEngine
 {
@@ -12,7 +13,5 @@ public:
 
 private:
 	manAudioDevice * _device;
-	SampleFormat _format;
-	size_t _bytesPerSample;
-	boost::function<void(float, uint8_t *)> _conversionFunction;
+	const std::vector<uint8_t> _buffer;
 };

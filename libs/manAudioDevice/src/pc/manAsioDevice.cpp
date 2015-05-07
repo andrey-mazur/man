@@ -3,6 +3,7 @@
 #include <asiosdk/common/asiosys.h>
 #include <asiosdk/common/asio.h>
 #include <asiosdk/host/asiodrivers.h>
+#include <asiosdk/host/ASIOConvertSamples.h>
 
 
 /* asio callbacks declarations */
@@ -10,18 +11,6 @@ void asio_bufferSwitch(long index, ASIOBool directProcess);
 void asio_sampleRateDidChange(ASIOSampleRate sampleRate);
 long asio_message(long selector, long value, void * message, double * opt);
 ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool directProcess);
-
-inline void fromInt32ToFloatInPlace(void* buffer, int samples)
-{
-	const double kScaler32Reverse = 1.0 / 0x7fffffff;
-
-	int* intBuffer = (int*)buffer;
-	float* floatBuffer = (float*)buffer;
-	while(--samples >= 0)
-	{
-		*floatBuffer++ = (float)(kScaler32Reverse * (*intBuffer++));
-	}
-}
 
 manAsioDevicePrivate * currentDevice = nullptr;
 class manAsioDevicePrivate
@@ -112,9 +101,9 @@ public:
 		ASIOCreateBuffers(bufferInfos, numInputChannels + numOutputChannels, preferredBufferSize, &callbacks);
 
 		delete[] input;
-		input = new void *[numInputChannels];
+		input = new float *[numInputChannels];
 		delete[] output;
-		output = new void *[numOutputChannels];
+		output = new float *[numOutputChannels];
 	}
 
 	void start()
@@ -148,19 +137,6 @@ public:
 		audioCallback = callback;
 	}
 
-	SampleFormat sampleFormat() const
-	{
-		switch (channelInfos->type)
-		{
-		case ASIOSTInt32LSB:
-			return SampleFormat_Int32;
-		case ASIOSTFloat32LSB:
-			return SampleFormat_Float32;
-		}
-
-		return SampleFormat_Unknown;
-	}
-
 	AsioDrivers driverList;
 	ASIOCallbacks callbacks;
 	ASIODriverInfo driverInfo;
@@ -175,8 +151,8 @@ public:
 	ASIOChannelInfo * channelInfos;
 	ASIOSampleRate sampleRate;
 	manAudioCallback audioCallback;
-	void ** input;
-	void ** output;
+	float ** input;
+	float ** output;
 };
 
 /* asio callbacks */
@@ -201,19 +177,24 @@ ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool dir
 		const long bytesPerChannel = currentDevice->preferredBufferSize * sizeof(int32_t);
 		for (int i = 0; i < currentDevice->numInputChannels; ++i)
 		{
-			currentDevice->input[i] = currentDevice->bufferInfos[i].buffers[index];
+			currentDevice->input[i] = static_cast<float *>(currentDevice->bufferInfos[i].buffers[index]);
 		}
 		manAudioBuffer inputBuffer = { currentDevice->numInputChannels,
 			bytesPerChannel * currentDevice->numInputChannels, currentDevice->input };
 
-		for (int i = 0; i < currentDevice->numOutputChannels; ++i)
+		for (size_t i = 0; i < currentDevice->numOutputChannels; ++i)
 		{
-			currentDevice->output[i] = currentDevice->bufferInfos[i + currentDevice->numInputChannels].buffers[index];
+			currentDevice->output[i] = static_cast<float *>(currentDevice->bufferInfos[i + currentDevice->numInputChannels].buffers[index]);
 		}
 		manAudioBuffer outputBuffer = { currentDevice->numOutputChannels,
 			bytesPerChannel * currentDevice->numOutputChannels, currentDevice->output };
 
 		currentDevice->audioCallback(inputBuffer, outputBuffer);
+
+		for (size_t i = 0; i < currentDevice->numOutputChannels; ++i)
+		{
+			ASIOConvertSamples().float32toInt32inPlace(currentDevice->output[i], currentDevice->preferredBufferSize);
+		}
 	}
 
 	if (currentDevice->asioOutputReady)
@@ -260,9 +241,4 @@ void manAsioDevice::setAudioCallback(manAudioCallback callback)
 float manAsioDevice::sampleRate()
 {
 	return static_cast<float>(_private->sampleRate);
-}
-
-SampleFormat manAsioDevice::sampleFormat()
-{
-	return _private->sampleFormat();
 }

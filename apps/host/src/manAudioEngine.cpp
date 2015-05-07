@@ -10,55 +10,9 @@
 #include <manAudioDevice/manAudioDevice.h>
 
 
-template <typename T>
-void convert(float value, uint8_t * buffer)
-{
-	*(reinterpret_cast<T *>(buffer)) = static_cast<T>(value * std::numeric_limits<T>::max());
-}
-
-template <>
-void convert<float>(float value, uint8_t * buffer)
-{
-	*(reinterpret_cast<float *>(buffer)) = static_cast<float>(value);
-}
-
-static size_t getBytesPerSample(SampleFormat format)
-{
-	switch (format)
-	{
-	case SampleFormat_Unknown:
-		return 0;
-	case SampleFormat_Int16:
-		return sizeof(int16_t);
-	case SampleFormat_Int32:
-		return sizeof(int32_t);
-	case SampleFormat_Float32:
-		return sizeof(float);
-	}
-
-	return 0;
-}
-
-static boost::function<void(float, uint8_t *)> getConversionFunction(SampleFormat format)
-{
-	switch (format)
-	{
-	case SampleFormat_Unknown:
-		return &convert<float>;
-	case SampleFormat_Int16:
-		return &convert<int16_t>;
-	case SampleFormat_Int32:
-		return &convert<int32_t>;
-	case SampleFormat_Float32:
-		return &convert<float>;
-	}
-
-	return &convert<float>;
-}
-
 manAudioEngine::manAudioEngine()
 	: _device(nullptr)
-	, _format(SampleFormat_Unknown)
+	, _buffer(sizeof(float) * 10000, 0)
 {
 	manAudioDeviceList list;
 	std::vector<std::string> deviceList = list.enumerateDevices();
@@ -70,9 +24,6 @@ manAudioEngine::manAudioEngine()
 
 	_device = list.create(deviceList.front());
 	_device->setAudioCallback(boost::bind(&manAudioEngine::process, this, _1, _2));
-	_format = _device->sampleFormat();
-	_bytesPerSample = getBytesPerSample(_format);
-	_conversionFunction = getConversionFunction(_format);
 	_device->start();
 }
 
@@ -88,7 +39,7 @@ void manAudioEngine::process(const manAudioBuffer inputBuffer, manAudioBuffer ou
 
 void manAudioEngine::sinWave(const manAudioBuffer inputBuffer, manAudioBuffer outputBuffer)
 {
-	const size_t bufferSize = outputBuffer.numLengthInBytes / outputBuffer.numChannels / _bytesPerSample;
+	const size_t bufferSize = outputBuffer.numLengthInBytes / outputBuffer.numChannels / sizeof(float);
 	const float freq1 = 440.0f;
 	const float d1 = 2.0f * static_cast<float>(M_PI) * freq1 / static_cast<float>(_device->sampleRate());
 	static float sinValue1 = 0.0f;
@@ -105,15 +56,15 @@ void manAudioEngine::sinWave(const manAudioBuffer inputBuffer, manAudioBuffer ou
 		{
 			if (inputBuffer.numChannels)
 			{
-				uint8_t * inputPtr = reinterpret_cast<uint8_t *>(inputBuffer.data[i]);
-				inputPtr += j * _bytesPerSample;
+				float * inputPtr = inputBuffer.data[i];
+				inputPtr += j;
 			}
 
-			uint8_t * outputPtr = reinterpret_cast<uint8_t *>(outputBuffer.data[i]);
-			outputPtr += j * _bytesPerSample;
+			float * outputPtr = outputBuffer.data[i];
+			outputPtr += j;
 			
 			value -= amplitude * sin(sinValue2);
-			_conversionFunction(value, outputPtr);
+			*outputPtr = value;
 		}
 		sinValue1 += d1;
 		sinValue2 += d2;
