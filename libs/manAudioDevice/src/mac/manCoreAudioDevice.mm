@@ -130,11 +130,12 @@ public:
 				output = nullptr;
 				if (size)
 				{
+					UInt32 bufferSize = audioObjectGetPropertyData<UInt32>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyBufferFrameSize);
 					streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
 					output = new float*[streamFormat.mChannelsPerFrame];
 					for (size_t i = 0; i < streamFormat.mChannelsPerFrame; ++i)
 					{
-						output[i] = new float[512]; // TODO: fix this to be dynamic
+						output[i] = new float[bufferSize]; // TODO: fix this to be dynamic
 					}
 					
 					bool isNonInterleaved = streamFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved;
