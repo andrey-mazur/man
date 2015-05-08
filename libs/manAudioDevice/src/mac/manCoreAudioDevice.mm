@@ -5,6 +5,7 @@
 #import <vector>
 #import <locale>
 #import <codecvt>
+#import <iostream>
 #import "manCoreAudioHelper.h"
 
 OSStatus AudioDeviceIO(AudioObjectID     inDevice,
@@ -30,6 +31,21 @@ public:
 	~manCoreAudioDevicePrivate()
 	{
 		AudioDeviceDestroyIOProcID(deviceId, procId);
+		
+		// TODO: handle this, when input is done
+		/*
+		for (size_t i = 0; i < streamFormat.mChannelsPerFrame; ++i)
+		{
+			delete[] input[i];
+		}
+		*/
+		delete[] input;
+		
+		for (size_t i = 0; i < streamFormat.mChannelsPerFrame; ++i)
+		{
+			delete[] output[i];
+		}
+		delete[] output;
 	}
 
 	bool create(const std::string& name)
@@ -100,7 +116,11 @@ public:
 				if (size)
 				{
 					streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeInput, kAudioDevicePropertyStreamFormat);
-					input = new void*[streamFormat.mChannelsPerFrame];
+					input = new float*[streamFormat.mChannelsPerFrame];
+					for (size_t i = 0; i < streamFormat.mChannelsPerFrame; ++i)
+					{
+						// TODO: create buffers for input
+					}
 				}
 				
 				theAddress.mScope = kAudioObjectPropertyScopeOutput;
@@ -111,7 +131,21 @@ public:
 				if (size)
 				{
 					streamFormat = audioObjectGetPropertyData<AudioStreamBasicDescription>(device, kAudioObjectPropertyScopeOutput, kAudioDevicePropertyStreamFormat);
-					output = new void*[streamFormat.mChannelsPerFrame];
+					output = new float*[streamFormat.mChannelsPerFrame];
+					for (size_t i = 0; i < streamFormat.mChannelsPerFrame; ++i)
+					{
+						output[i] = new float[512]; // TODO: fix this to be dynamic
+					}
+					
+					bool isNonInterleaved = streamFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved;
+					bool isFloat = streamFormat.mFormatFlags & kAudioFormatFlagIsFloat;
+					bool isBigEndian = streamFormat.mFormatFlags & kAudioFormatFlagIsBigEndian;
+					bool isPacked = streamFormat.mFormatFlags & kAudioFormatFlagIsPacked;
+					
+					std::cout << "isNonInterleaved: " << isNonInterleaved << std::endl;
+					std::cout << "isFloat:" << isFloat << std::endl;
+					std::cout << "isBigEndian:" << isBigEndian << std::endl;
+					std::cout << "isPacked:" << isPacked << std::endl;
 				}
 				
 				AudioDeviceCreateIOProcID(device, AudioDeviceIO, this, &procId);
@@ -141,22 +175,12 @@ public:
 		return streamFormat.mSampleRate;
 	}
 	
-	SampleFormat sampleFormat() const
-	{
-		if (streamFormat.mFormatFlags & kAudioFormatFlagIsFloat)
-		{
-			return SampleFormat_Float32;
-		}
-		
-		return SampleFormat_Unknown;
-	}
-	
 	AudioDeviceID deviceId;
 	AudioDeviceIOProcID procId;
 	AudioStreamBasicDescription streamFormat;
 	manAudioCallback audioCallback;
-	void ** input;
-	void ** output;
+	float ** input;
+	float ** output;
 };
 
 OSStatus AudioDeviceIO(AudioObjectID     inDevice,
@@ -182,13 +206,10 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 		manAudioBuffer outputBuffer = {};
 		if (outOutputData->mNumberBuffers)
 		{
+			// TODO: just check whether everything is the same as in privatePart->output,
+			// e.g. numChannels and numLengthInBytes shouldn't change
 			outputBuffer.numChannels = static_cast<size_t>(outOutputData->mBuffers->mNumberChannels);
 			outputBuffer.numLengthInBytes = static_cast<size_t>(outOutputData->mBuffers->mDataByteSize);
-			uint8_t * rawPtr = reinterpret_cast<uint8_t *>(outOutputData->mBuffers->mData);
-			for (UInt32 i = 0; i < outputBuffer.numChannels; ++i)
-			{
-				privatePart->output[i] = rawPtr + i * outOutputData->mBuffers->mDataByteSize / outOutputData->mBuffers->mNumberChannels;
-			}
 			outputBuffer.data = privatePart->output;
 			
 			// CoreAudio uses interleaved buffer,
@@ -197,20 +218,22 @@ OSStatus AudioDeviceIO(AudioObjectID     inDevice,
 			privatePart->audioCallback(inputBuffer, outputBuffer);
 			
 			// making output buffer interleaved
+			// Example: index of sample before <-> index of sample after
+			// 0 <-> 0
+			// 1 <-> 2
+			// 2 <-> 4
+			// 3 <-> 6
 			const size_t bytesPerSample = privatePart->streamFormat.mBytesPerFrame / outOutputData->mBuffers->mNumberChannels;
-			const size_t samplesPerChannel = outOutputData->mBuffers->mDataByteSize / bytesPerSample;
-			size_t destIndex = 0;
-			for (size_t i = 0; i < samplesPerChannel; ++i)
+			const size_t samplesPerChannel = outOutputData->mBuffers->mDataByteSize / outOutputData->mBuffers->mNumberChannels / bytesPerSample;
+			const size_t stride = outputBuffer.numChannels;
+			for (size_t channel = 0; channel < outputBuffer.numChannels; channel++)
 			{
-				for (size_t channel = 0; channel < outputBuffer.numChannels; ++channel, ++destIndex)
+				const float * src = outputBuffer.data[channel];
+				float * dest = static_cast<float *>(outOutputData->mBuffers->mData) + channel;
+				
+				for (size_t i = 0; i < samplesPerChannel; i++)
 				{
-					size_t stride = channel % outputBuffer.numChannels;
-					size_t sourceIndex = stride * samplesPerChannel + i;
-					
-					uint8_t tmp[bytesPerSample];
-					memcpy(tmp, static_cast<uint8_t *>(outputBuffer.data[channel]) + sourceIndex, bytesPerSample);
-					memcpy(static_cast<uint8_t *>(outputBuffer.data[channel]) + sourceIndex, static_cast<uint8_t *>(outputBuffer.data[channel]) + destIndex, bytesPerSample);
-					memcpy(static_cast<uint8_t *>(outputBuffer.data[channel]) + destIndex, tmp, bytesPerSample);
+					*(dest + (i * stride)) = src[i];
 				}
 			}
 		}
@@ -253,9 +276,4 @@ void manCoreAudioDevice::setAudioCallback(manAudioCallback callback)
 float manCoreAudioDevice::sampleRate()
 {
 	return _private->sampleRate();
-}
-
-SampleFormat manCoreAudioDevice::sampleFormat()
-{
-	return _private->sampleFormat();
 }

@@ -18,7 +18,7 @@ manAudioEngine::manAudioEngine()
 	std::vector<std::string> deviceList = list.enumerateDevices();
 	std::for_each(deviceList.begin(), deviceList.end(),
 		[](std::string& element){ std::cout << element << std::endl; });
-#ifdef Q_OS_MAC
+#ifdef __APPLE__
 	std::reverse(deviceList.begin(), deviceList.end());
 #endif
 
@@ -46,7 +46,7 @@ void manAudioEngine::sinWave(const manAudioBuffer inputBuffer, manAudioBuffer ou
 	const float freq2 = 330.0f;
 	const float d2 = 2.0f * static_cast<float>(M_PI) * freq2 / static_cast<float>(_device->sampleRate());
 	static float sinValue2 = 0.0f;
-	float amplitude = 0.02f;
+	float amplitude = 0.12f;
 
 	for (long j = 0; j < bufferSize; ++j)
 	{
