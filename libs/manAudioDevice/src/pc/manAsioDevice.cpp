@@ -12,11 +12,9 @@ void asio_sampleRateDidChange(ASIOSampleRate sampleRate);
 long asio_message(long selector, long value, void * message, double * opt);
 ASIOTime * asio_bufferSwitchTimeInfo(ASIOTime * params, long index, ASIOBool directProcess);
 
-const float kInt32ToFloatMultiplier = 1.0 / 0x7fffffff;
+const float kInt32ToFloatMultiplier = 1.0f / 0x7fffffff;
 inline void fromInt32ToFloatInPlace(void * buffer, int samples)
 {
-	const float kScaler32Reverse = 1.0 / 0x7fffffff;
-
 	int * intBuffer = static_cast<int *>(buffer);
 	float * floatBuffer = static_cast<float *>(buffer);
 	while (--samples >= 0)

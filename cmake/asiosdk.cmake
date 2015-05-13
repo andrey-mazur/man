@@ -1,13 +1,36 @@
 cmake_minimum_required(VERSION 3.2)
 
 if (NOT DEFINED ASIOSDK_DIR)
-    message(FATAL_ERROR "ASIOSDK_DIR should be defined explicitely")
-else ()
-    message(STATUS "Building asiosdk from: ${ASIOSDK_DIR}")
+    if (DEFINED _3RDPARTY_LIBS_DIR)
+        message(STATUS "Searching for asiosdk in 3rd-party libs folder: "
+            "${_3RDPARTY_LIBS_DIR}")
 
-    if (WIN32)
-        string(REPLACE "\\" "/" ASIOSDK_DIR "${ASIOSDK_DIR}")
+        # find the most important header
+        if (WIN32)
+            set(dirCmd "cmd.exe")
+            set(dirArgs "/C cd /D ${_3RDPARTY_LIBS_DIR} && dir /S /B asio.h")
+            execute_process(COMMAND ${dirCmd} ${dirArgs}
+                OUTPUT_VARIABLE asioHeader_)
+
+            # for some reasons this fails
+            # if (NOT EXISTS "${asioHeader_}")
+            #    message(FATAL_ERROR "Could not find asio.h")
+            # endif ()
+        else ()
+            message(FATAL_ERROR "asiosdk is supposed to be used on Windows only")
+        endif()
+        get_filename_component(commonFolder_ ${asioHeader_} DIRECTORY)
+        get_filename_component(rootFolder_ "${commonFolder_}/../" ABSOLUTE)
+        set(ASIOSDK_DIR ${rootFolder_})
+    else ()
+        message(FATAL_ERROR "ASIOSDK_DIR should be defined explicitely")
     endif ()
+endif ()
+
+message(STATUS "Building asiosdk from: ${ASIOSDK_DIR}")
+
+if (WIN32)
+    string(REPLACE "\\" "/" ASIOSDK_DIR "${ASIOSDK_DIR}")
 endif ()
 
 set(headers_
@@ -34,8 +57,10 @@ endif()
 
 file(GLOB platformHeaders_
     ${ASIOSDK_DIR}/host/${platformDir_}/*.h)
+
 file(GLOB platformSources_
     ${ASIOSDK_DIR}/host/${platformDir_}/*.cpp)
+
 source_group(${platformDir_} FILES ${platformHeaders_} ${platformSources_})
 
 include_directories(${ASIOSDK_DIR}/common
